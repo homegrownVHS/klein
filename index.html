@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donut Tunnel Journey</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            background: #000; 
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ffffff;
+            z-index: 100;
+            text-shadow: 0 0 10px #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>Donut Tunnel</h1>
+        <p>Slow journey through repeating patterns</p>
+    </div>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000033, 1);
+        document.body.appendChild(renderer.domElement);
+
+        // Create simple donut with animated color-cycling pattern
+        function createDonutTunnel() {
+            const majorRadius = 20;
+            const minorRadius = 6;
+            
+            // Donut geometry - viewed from inside
+            const torusGeometry = new THREE.TorusGeometry(majorRadius, minorRadius, 16, 32);
+            
+            // Dynamic pattern material
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Function to interpolate between colors smoothly
+            function interpolateColor(color1, color2, t) {
+                const r1 = parseInt(color1.substr(1, 2), 16);
+                const g1 = parseInt(color1.substr(3, 2), 16);
+                const b1 = parseInt(color1.substr(5, 2), 16);
+                
+                const r2 = parseInt(color2.substr(1, 2), 16);
+                const g2 = parseInt(color2.substr(3, 2), 16);
+                const b2 = parseInt(color2.substr(5, 2), 16);
+                
+                const r = Math.round(r1 + (r2 - r1) * t);
+                const g = Math.round(g1 + (g2 - g1) * t);
+                const b = Math.round(b1 + (b2 - b1) * t);
+                
+                return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            }
+            
+            // Function to update the pattern with continuous 3D-based colors
+            function updatePattern(time) {
+                const patternSize = 16;
+                
+                for (let x = 0; x < canvas.width; x += patternSize) {
+                    for (let y = 0; y < canvas.height; y += patternSize) {
+                        // Convert canvas coordinates to torus surface coordinates
+                        const u = (x / canvas.width) * Math.PI * 2 * 16;
+                        const v = (y / canvas.height) * Math.PI * 2 * 8;
+                        
+                        // Calculate 3D position on torus surface
+                        const torusX = (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u);
+                        const torusY = (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u);
+                        const torusZ = minorRadius * Math.sin(v);
+                        
+                        // Distance from donut center for ring calculation
+                        const distanceFromCenter = Math.sqrt(torusX * torusX + torusY * torusY + torusZ * torusZ);
+                        
+                        // Create expanding rings
+                        const ringFreq = 3.0;
+                        const ringSpeed = 1.5;
+                        const ringPhase = distanceFromCenter * ringFreq - time * ringSpeed;
+                        
+                        // Sharp ring boundaries
+                        const ringPosition = ((ringPhase % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2) / (Math.PI * 2);
+                        const ringIndex = Math.floor(ringPosition * 6) % 6;
+                        
+                        // Rainbow colors
+                        const ringColors = [
+                            [1, 0, 0],     // Red
+                            [1, 0.5, 0],   // Orange
+                            [1, 1, 0],     // Yellow
+                            [0, 1, 0],     // Green
+                            [0, 0, 1],     // Blue
+                            [0.5, 0, 1]    // Purple
+                        ];
+                        
+                        const currentColor = ringColors[ringIndex % ringColors.length];
+                        const brightness = 0.8 + 0.2 * Math.sin(time * 2);
+                        
+                        // Square colors
+                        const squareR = Math.floor(255 * currentColor[0] * brightness);
+                        const squareG = Math.floor(255 * currentColor[1] * brightness);
+                        const squareB = Math.floor(255 * currentColor[2] * brightness);
+                        
+                        // Circle colors (next ring for contrast)
+                        const nextRingIndex = (ringIndex + 1) % ringColors.length;
+                        const nextColor = ringColors[nextRingIndex];
+                        const circleR = Math.floor(255 * nextColor[0] * brightness);
+                        const circleG = Math.floor(255 * nextColor[1] * brightness);
+                        const circleB = Math.floor(255 * nextColor[2] * brightness);
+                        
+                        // Draw square
+                        ctx.fillStyle = `rgb(${squareR}, ${squareG}, ${squareB})`;
+                        ctx.fillRect(x, y, patternSize, patternSize);
+                        
+                        // Square border
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x, y, patternSize, patternSize);
+                        
+                        // Draw circle
+                        ctx.fillStyle = `rgb(${circleR}, ${circleG}, ${circleB})`;
+                        ctx.beginPath();
+                        ctx.arc(x + patternSize/2, y + patternSize/2, patternSize/4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Circle border
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            updatePattern(0);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(16, 8);
+            
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.BackSide // View from inside
+            });
+            
+            const torus = new THREE.Mesh(torusGeometry, material);
+            scene.add(torus);
+            
+            return { torus, majorRadius, minorRadius, texture, canvas, updatePattern };
+        }
+
+        const donut = createDonutTunnel();
+
+        // ===== EASY CAMERA CONTROLS - TWEAK THESE VALUES =====
+        let cameraX = 0;        // Left/Right position
+        let cameraY = 25;        // Up/Down position  
+        let cameraZ = 0;        // Forward/Back position
+        let lookX = 0;          // Where to look X
+        let lookY = 0;          // Where to look Y
+        let lookZ = 1;          // Where to look Z
+        let autoMove = false;   // Set to true for automatic movement
+        let cameraAngle = 0;    // For auto movement
+        
+        // Add some debugging info
+        const debugDiv = document.createElement('div');
+        debugDiv.style.position = 'absolute';
+        debugDiv.style.top = '10px';
+        debugDiv.style.left = '10px';
+        debugDiv.style.color = 'white';
+        debugDiv.style.fontFamily = 'monospace';
+        debugDiv.style.background = 'rgba(0,0,0,0.7)';
+        debugDiv.style.padding = '10px';
+        debugDiv.style.zIndex = '1000';
+        document.body.appendChild(debugDiv);
+        
+        // Make sure canvas can receive focus
+        renderer.domElement.tabIndex = 1;
+        renderer.domElement.focus();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (autoMove) {
+                // Automatic movement (set autoMove = true above)
+                cameraAngle += 0.002;
+                cameraX = Math.cos(cameraAngle) * 20;
+                cameraZ = Math.sin(cameraAngle) * 20;
+            }
+            
+            // Set camera position using the variables above
+            camera.position.set(cameraX, cameraY, cameraZ);
+            camera.lookAt(lookX, lookY, lookZ);
+            
+            // Show debug info with current values
+            debugDiv.innerHTML = `
+                Camera Position: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})<br>
+                Looking At: (${lookX.toFixed(2)}, ${lookY.toFixed(2)}, ${lookZ.toFixed(2)})<br>
+                Auto Movement: ${autoMove ? 'ON' : 'OFF'}<br>
+                <br>
+                <strong>Edit these values in the code:</strong><br>
+                cameraX: ${cameraX} (left/right)<br>
+                cameraY: ${cameraY} (up/down)<br>
+                cameraZ: ${cameraZ} (forward/back)<br>
+                lookX: ${lookX}, lookY: ${lookY}, lookZ: ${lookZ}<br>
+                autoMove: ${autoMove}
+            `;
+
+            // Update color cycling pattern
+            const time = Date.now() * 0.001; // Convert to seconds
+            donut.updatePattern(time);
+            donut.texture.needsUpdate = true;
+
+            // Animate pattern position
+            donut.texture.offset.x += 0.001;
+
+            renderer.render(scene, camera);
+        }
+        
+        // Add keyboard controls for manual positioning
+        const keys = {};
+        
+        document.addEventListener('keydown', (event) => {
+            keys[event.key.toLowerCase()] = true;
+            event.preventDefault();
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            keys[event.key.toLowerCase()] = false;
+            event.preventDefault();
+        });
+        
+        function handleMovement() {
+            const moveSpeed = 0.1;
+            if (keys['w']) camera.position.y += moveSpeed;
+            if (keys['s']) camera.position.y -= moveSpeed;
+            if (keys['a']) camera.position.x -= moveSpeed;
+            if (keys['d']) camera.position.x += moveSpeed;
+            if (keys['q']) camera.position.z += moveSpeed;
+            if (keys['e']) camera.position.z -= moveSpeed;
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
