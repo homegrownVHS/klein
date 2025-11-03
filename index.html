@@ -12,21 +12,11 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #ffffff;
-            z-index: 100;
-            text-shadow: 0 0 10px #ffffff;
-        }
+
     </style>
 </head>
 <body>
-    <div id="info">
-        <h1>Donut Tunnel</h1>
-        <p>Slow journey through repeating patterns</p>
-    </div>
+
     
     <script>
         // Scene setup
@@ -37,12 +27,12 @@
         renderer.setClearColor(0x000011, 1); // Darker background for better lighting contrast
         document.body.appendChild(renderer.domElement);
 
-        // Simple lighting to showcase internal donut depth
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Base lighting
+        // Bright, striking lighting for visual impact
+        const ambientLight = new THREE.AmbientLight(0x707070, 1.1); // Even higher ambient light
         scene.add(ambientLight);
 
-        // Single directional light to create depth perception
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        // Reduced directional light for subtle depth
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
         directionalLight.position.set(20, 15, 10);
         directionalLight.target.position.set(0, 0, 0);
         scene.add(directionalLight);
@@ -100,18 +90,18 @@
                         // Color based on 3D torus geometry with more variety
                         const radialDistance = Math.sqrt(torusX * torusX + torusY * torusY);
                         
-                        // Organized color movement patterns
-                        const ringWave = Math.sin((radialDistance - 14) * 0.5 + time * 1.2); // Smooth radial waves
-                        const spiralFlow = u * 0.3 + time * 0.6; // Steady spiral rotation
-                        const longitudinalWave = Math.sin(v * 2 + time * 0.8); // Waves around the tube
+                        // Smooth, continuous color flow patterns
+                        const ringWave = Math.sin((radialDistance - 14) * 0.4 + time * 1.0); // Gentler radial waves
+                        const spiralFlow = u * 0.2 + time * 0.8; // More dominant spiral flow
+                        const longitudinalWave = Math.sin(v * 1.5 + time * 0.6); // Smoother tube waves
                         
-                        // Combine for smooth, predictable color flow
-                        const combinedPhase = ringWave * 2 + spiralFlow + longitudinalWave;
-                        const hue = (combinedPhase * 60 + 200) % 360; // Smoother color cycling
+                        // Create flowing rainbow effect that never gets too light
+                        const combinedPhase = spiralFlow * 3 + ringWave + longitudinalWave * 0.5;
+                        const hue = (combinedPhase * 45 + time * 30) % 360; // Continuous rainbow cycling
                         
-                        // Smooth variations in saturation and brightness
-                        const saturation = 70 + Math.sin(spiralFlow * 0.8) * 15; // Gentle saturation waves
-                        const lightness = 55 + Math.cos(ringWave + longitudinalWave) * 10; // Coordinated brightness
+                        // Keep colors rich and saturated without washing out
+                        const saturation = 90 + Math.sin(spiralFlow * 0.8) * 10; // High saturation, less variation
+                        const lightness = 50 + Math.cos(ringWave + longitudinalWave) * 8; // Medium lightness to avoid white
                         
                         // Convert HSV to RGB
                         function hsvToRgb(h, s, v) {
@@ -132,7 +122,7 @@
                         }
                         
                         const [r, g, b] = hsvToRgb(hue, saturation / 100, lightness / 100);
-                        const brightness = 0.9 + 0.1 * Math.sin(time * 0.5 + combinedPhase * 0.3);
+                        const brightness = 1.0 + 0.15 * Math.sin(time * 0.5 + combinedPhase * 0.3); // Brighter with more variation
                         
                         // Square colors
                         const squareR = Math.floor(255 * r * brightness);
@@ -210,17 +200,7 @@
         let autoMove = false;   // Set to true for automatic movement
         let cameraAngle = 0;    // For auto movement
         
-        // Add some debugging info
-        const debugDiv = document.createElement('div');
-        debugDiv.style.position = 'absolute';
-        debugDiv.style.top = '10px';
-        debugDiv.style.left = '10px';
-        debugDiv.style.color = 'white';
-        debugDiv.style.fontFamily = 'monospace';
-        debugDiv.style.background = 'rgba(0,0,0,0.7)';
-        debugDiv.style.padding = '10px';
-        debugDiv.style.zIndex = '1000';
-        document.body.appendChild(debugDiv);
+
         
         // Make sure canvas can receive focus
         renderer.domElement.tabIndex = 1;
@@ -240,19 +220,7 @@
             camera.position.set(cameraX, cameraY, cameraZ);
             camera.lookAt(lookX, lookY, lookZ);
             
-            // Show debug info with current values
-            debugDiv.innerHTML = `
-                Camera Position: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})<br>
-                Looking At: (${lookX.toFixed(2)}, ${lookY.toFixed(2)}, ${lookZ.toFixed(2)})<br>
-                Auto Movement: ${autoMove ? 'ON' : 'OFF'}<br>
-                <br>
-                <strong>Edit these values in the code:</strong><br>
-                cameraX: ${cameraX} (left/right)<br>
-                cameraY: ${cameraY} (up/down)<br>
-                cameraZ: ${cameraZ} (forward/back)<br>
-                lookX: ${lookX}, lookY: ${lookY}, lookZ: ${lookZ}<br>
-                autoMove: ${autoMove}
-            `;
+
 
             // Update color cycling pattern
             const time = Date.now() * 0.001; // Convert to seconds
