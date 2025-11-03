@@ -45,10 +45,10 @@
             // Donut geometry - viewed from inside (higher resolution to reduce seams)
             const torusGeometry = new THREE.TorusGeometry(majorRadius, minorRadius, 64, 128);
             
-            // Dynamic pattern material (higher resolution for smoother appearance)
+                        // Dynamic pattern material (higher resolution for smoother appearance)
             const canvas = document.createElement('canvas');
-            canvas.width = 1000;  // Evenly divisible by 40 (25 squares per row)
-            canvas.height = 1000; // Evenly divisible by 40 (25 squares per column)
+            canvas.width = 1056;  // Evenly divisible by 66 (16 squares per row)
+            canvas.height = 1056; // Evenly divisible by 66 (16 squares per column)
             const ctx = canvas.getContext('2d');
             
             // Function to interpolate between colors smoothly
@@ -70,7 +70,7 @@
             
             // Function to update the pattern with moving circles
             function updatePattern(time) {
-                const patternSize = 50; // Even larger squares for better metallic detail visibility
+                const patternSize = 66; // Much larger squares for better texture and detail visibility
                 
                 // Torus parameters for 3D mapping (must match geometry)
                 const majorRadius = 20;
@@ -83,9 +83,15 @@
                         const screenU = x / canvas.width;  // 0-1 around the torus
                         const screenV = y / canvas.height; // 0-1 around the tube
                         
-                        // Determine which zone/screen this pixel belongs to
-                        const zoneCount = 24; // Many more color bands
-                        const zone = Math.floor(screenU * zoneCount);
+                        // Use UV coordinates for seamless checkerboard (these are inherently seamless)
+                        const checkerSize = 4; // Size of checkerboard squares in button units
+                        const checkerU = Math.floor((screenU * 16) / checkerSize); // Divide 16x16 grid by checker size
+                        const checkerV = Math.floor((screenV * 16) / checkerSize); // Divide 16x16 grid by checker size
+                        
+                        // Create alternating checkerboard pattern
+                        const isChecker = (checkerU + checkerV) % 2;
+                        const baseZone = Math.floor(screenU * 12); // 12 base color zones
+                        const zone = baseZone + (isChecker * 12); // Offset every other checker square
                         
                         // Fresh, unique color palette - no rainbow, just beautiful combinations
                         const palette = [
@@ -123,7 +129,7 @@
                         ];
                         
                         // Calculate color cycling through palette
-                        const cycleSpeed = time * 0.6; // Even slower for smoother transitions with more colors
+                        const cycleSpeed = time * 6.0; // Ultra-fast color cycling for maximum dynamism
                         const zoneOffset = zone * (palette.length / 24); // Distribute 24 zones across palette
                         const totalCyclePos = (cycleSpeed + zoneOffset) % palette.length;
                         
@@ -195,65 +201,162 @@
                         const circleG = Math.floor(255 * cg * brightness);
                         const circleB = Math.floor(255 * cb * brightness);
                         
-                        // Draw square with enhanced metallic gradient
-                        const gradient = ctx.createLinearGradient(x, y, x + patternSize, y + patternSize);
-                        
-                        // Create ultra-metallic shine effect with extreme contrast
+                        // Enhanced 3D button effect with depth and shadows
                         const baseColor = `rgb(${squareR}, ${squareG}, ${squareB})`;
                         const ultraBrightColor = `rgb(${Math.min(255, squareR + 150)}, ${Math.min(255, squareG + 150)}, ${Math.min(255, squareB + 150)})`;
                         const brightColor = `rgb(${Math.min(255, squareR + 80)}, ${Math.min(255, squareG + 80)}, ${Math.min(255, squareB + 80)})`;
                         const darkColor = `rgb(${Math.max(0, squareR - 100)}, ${Math.max(0, squareG - 100)}, ${Math.max(0, squareB - 100)})`;
                         const ultraDarkColor = `rgb(${Math.max(0, squareR - 140)}, ${Math.max(0, squareG - 140)}, ${Math.max(0, squareB - 140)})`;
+                        const shadowColor = `rgba(0, 0, 0, 0.6)`;
                         
-                        gradient.addColorStop(0, ultraBrightColor); // Ultra bright metallic highlight
-                        gradient.addColorStop(0.1, brightColor);   // Bright transition
-                        gradient.addColorStop(0.3, baseColor);     // Base color
-                        gradient.addColorStop(0.7, baseColor);     // Base color
-                        gradient.addColorStop(0.9, darkColor);     // Dark transition
-                        gradient.addColorStop(1, ultraDarkColor);  // Ultra deep shadow
+                        // Draw deep shadow first (offset down-right for 3D depth)
+                        const shadowOffset = 4;
+                        ctx.fillStyle = shadowColor;
+                        ctx.fillRect(x + shadowOffset, y + shadowOffset, patternSize - shadowOffset, patternSize - shadowOffset);
                         
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(x, y, patternSize, patternSize);
+                        // Create raised button gradient (top-left to bottom-right)
+                        const buttonGradient = ctx.createLinearGradient(x, y, x + patternSize, y + patternSize);
+                        buttonGradient.addColorStop(0, ultraBrightColor);    // Top-left highlight (light source)
+                        buttonGradient.addColorStop(0.15, brightColor);     // Bright edge
+                        buttonGradient.addColorStop(0.4, baseColor);        // Main surface
+                        buttonGradient.addColorStop(0.85, darkColor);       // Shadow edge
+                        buttonGradient.addColorStop(1, ultraDarkColor);     // Bottom-right shadow
                         
-                        // Add secondary metallic highlight streak
-                        const highlight = ctx.createLinearGradient(x, y, x + patternSize * 0.4, y + patternSize * 0.4);
-                        const highlightColor = `rgba(255, 255, 255, 0.3)`; // Semi-transparent white shine
+                        // Draw main button surface (slightly inset to show shadow)
+                        ctx.fillStyle = buttonGradient;
+                        ctx.fillRect(x, y, patternSize - shadowOffset, patternSize - shadowOffset);
+                        
+                        // Add beveled edges for stronger 3D effect
+                        const bevelSize = 3;
+                        
+                        // Top highlight edge
+                        ctx.fillStyle = ultraBrightColor;
+                        ctx.fillRect(x, y, patternSize - shadowOffset, bevelSize);
+                        
+                        // Left highlight edge  
+                        ctx.fillRect(x, y, bevelSize, patternSize - shadowOffset);
+                        
+                        // Bottom shadow edge
+                        ctx.fillStyle = ultraDarkColor;
+                        ctx.fillRect(x, y + patternSize - shadowOffset - bevelSize, patternSize - shadowOffset, bevelSize);
+                        
+                        // Right shadow edge
+                        ctx.fillRect(x + patternSize - shadowOffset - bevelSize, y, bevelSize, patternSize - shadowOffset);
+                        
+                        // Add textural variations to squares (adjusted for 3D button surface)
+                        const buttonSurface = patternSize - shadowOffset;
+                        const textureVariant = Math.floor((screenU * 100 + screenV * 100) % 4); // 4 different texture types
+                        
+                        if (textureVariant === 0) {
+                            // Brushed metal horizontal lines (on button surface only)
+                            ctx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
+                            ctx.lineWidth = 1;
+                            for (let i = 6; i < buttonSurface - 3; i += 4) {
+                                ctx.beginPath();
+                                ctx.moveTo(x + 3, y + i);
+                                ctx.lineTo(x + buttonSurface - 3, y + i);
+                                ctx.stroke();
+                            }
+                            
+                        } else if (textureVariant === 1) {
+                            // Diagonal crosshatch pattern (on button surface only)
+                            ctx.strokeStyle = `rgba(255, 255, 255, 0.08)`;
+                            ctx.lineWidth = 0.5;
+                            for (let i = 0; i < buttonSurface * 2; i += 8) {
+                                // Diagonal lines / (clipped to button surface)
+                                ctx.beginPath();
+                                ctx.moveTo(Math.max(x + 3, x + i), y + 3);
+                                ctx.lineTo(x + 3, Math.min(y + buttonSurface - 3, y + i));
+                                ctx.stroke();
+                                // Diagonal lines \ (clipped to button surface)
+                                ctx.beginPath();
+                                ctx.moveTo(Math.min(x + buttonSurface - 3, x + buttonSurface - i), y + 3);
+                                ctx.lineTo(x + buttonSurface - 3, Math.min(y + buttonSurface - 3, y + i));
+                                ctx.stroke();
+                            }
+                            
+                        } else if (textureVariant === 2) {
+                            // Stippled/dotted texture (on button surface only)
+                            ctx.fillStyle = `rgba(255, 255, 255, 0.12)`;
+                            for (let dx = 6; dx < buttonSurface - 3; dx += 6) {
+                                for (let dy = 6; dy < buttonSurface - 3; dy += 6) {
+                                    ctx.beginPath();
+                                    ctx.arc(x + dx, y + dy, 0.8, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                            
+                        } else {
+                            // Concentric circles (like vinyl record, on button surface only)
+                            ctx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
+                            ctx.lineWidth = 0.5;
+                            const centerX = x + buttonSurface / 2;
+                            const centerY = y + buttonSurface / 2;
+                            for (let radius = 4; radius < buttonSurface * 0.35; radius += 6) {
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                                ctx.stroke();
+                            }
+                        }
+                        
+                        // Enhanced 3D highlight streak (on button surface)
+                        const highlight = ctx.createLinearGradient(x, y, x + buttonSurface * 0.5, y + buttonSurface * 0.5);
+                        const highlightColor = `rgba(255, 255, 255, 0.4)`; // Stronger highlight for 3D effect
                         const transparentColor = `rgba(255, 255, 255, 0)`;
                         
                         highlight.addColorStop(0, highlightColor);
                         highlight.addColorStop(1, transparentColor);
                         
                         ctx.fillStyle = highlight;
-                        ctx.fillRect(x, y, patternSize * 0.6, patternSize * 0.6);
+                        ctx.fillRect(x + 2, y + 2, buttonSurface * 0.4, buttonSurface * 0.4);
                         
-                        // Metallic edge highlights
-                        ctx.strokeStyle = `rgba(255, 255, 255, 0.4)`;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(x, y);
-                        ctx.lineTo(x + patternSize * 0.3, y);
-                        ctx.moveTo(x, y);
-                        ctx.lineTo(x, y + patternSize * 0.3);
-                        ctx.stroke();
+                        // Additional corner highlight for stronger 3D button effect
+                        ctx.fillStyle = `rgba(255, 255, 255, 0.6)`;
+                        ctx.fillRect(x + 1, y + 1, 8, 2); // Top highlight line
+                        ctx.fillRect(x + 1, y + 1, 2, 8); // Left highlight line
                         
-                        // Square border
-                        ctx.strokeStyle = '#000000';
+                        // Button border (only around the raised surface, not the shadow)
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
                         ctx.lineWidth = 1;
-                        ctx.strokeRect(x, y, patternSize, patternSize);
+                        ctx.strokeRect(x, y, buttonSurface, buttonSurface);
                         
-                        // Keep circles perfectly centered in their squares
-                        const animatedCircleX = x + Math.floor(patternSize/2);
-                        const animatedCircleY = y + Math.floor(patternSize/2);
+                        // Keep circles perfectly centered on the button surface (not including shadow)
+                        const animatedCircleX = x + Math.floor(buttonSurface/2);
+                        const animatedCircleY = y + Math.floor(buttonSurface/2);
                         
-                        // Draw animated circle
-                        ctx.fillStyle = `rgb(${circleR}, ${circleG}, ${circleB})`;
+                        // Draw animated circle with 3D effect (smaller to fit on button surface)
+                        const circleRadius = buttonSurface/5;
+                        
+                        // Circle shadow (slightly offset)
+                        ctx.fillStyle = `rgba(0, 0, 0, 0.3)`;
                         ctx.beginPath();
-                        ctx.arc(animatedCircleX, animatedCircleY, patternSize/4, 0, Math.PI * 2);
+                        ctx.arc(animatedCircleX + 1, animatedCircleY + 1, circleRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Main circle with gradient for 3D effect
+                        const circleGradient = ctx.createRadialGradient(
+                            animatedCircleX - circleRadius/3, animatedCircleY - circleRadius/3, 0,
+                            animatedCircleX, animatedCircleY, circleRadius
+                        );
+                        circleGradient.addColorStop(0, `rgb(${Math.min(255, circleR + 60)}, ${Math.min(255, circleG + 60)}, ${Math.min(255, circleB + 60)})`);
+                        circleGradient.addColorStop(1, `rgb(${Math.max(0, circleR - 40)}, ${Math.max(0, circleG - 40)}, ${Math.max(0, circleB - 40)})`);
+                        
+                        ctx.fillStyle = circleGradient;
+                        ctx.beginPath();
+                        ctx.arc(animatedCircleX, animatedCircleY, circleRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Circle highlight
+                        ctx.fillStyle = `rgba(255, 255, 255, 0.4)`;
+                        ctx.beginPath();
+                        ctx.arc(animatedCircleX - circleRadius/4, animatedCircleY - circleRadius/4, circleRadius/3, 0, Math.PI * 2);
                         ctx.fill();
                         
                         // Circle border
-                        ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(animatedCircleX, animatedCircleY, circleRadius, 0, Math.PI * 2);
                         ctx.stroke();
                     }
                 }
@@ -309,20 +412,17 @@
             const time = Date.now() * 0.001; // Convert to seconds
 
             if (autoMove) {
-                // Enhanced dynamic camera movement with multiple layers
-                cameraAngle += 0.002 + Math.sin(time * 0.1) * 0.001; // Variable speed
+                // Constant speed camera movement around the donut
+                cameraAngle += 0.02; // Very fast constant rotation speed
                 
-                // Multi-layered orbital movement with pulsing radius
-                const primaryRadius = 18 + Math.sin(time * 0.15) * 4; // Pulsing distance
-                const secondaryAngle = time * 0.3; // Secondary rotation
+                // Constant radius orbital movement
+                const primaryRadius = 20; // Fixed distance for steady movement
                 
-                cameraX = Math.cos(cameraAngle) * primaryRadius + Math.cos(secondaryAngle) * 3;
-                cameraZ = Math.sin(cameraAngle) * primaryRadius + Math.sin(secondaryAngle) * 3;
+                cameraX = Math.cos(cameraAngle) * primaryRadius;
+                cameraZ = Math.sin(cameraAngle) * primaryRadius;
                 
-                // Dynamic vertical movement with breathing effect
-                const breathingOffset = Math.sin(time * 0.2) * 8;
-                const bobbingOffset = Math.cos(time * 0.8) * 2;
-                cameraY = 25 + breathingOffset + bobbingOffset;
+                // Keep vertical position stable
+                cameraY = 28; // Fixed height for consistent viewing
                 
                 // Dynamic look-at point for more immersive movement
                 lookX = Math.sin(time * 0.1) * 2;
@@ -338,22 +438,22 @@
             donut.updatePattern(time);
             donut.texture.needsUpdate = true;
 
-            // Enhanced texture animation with wave-like movement
-            const textureSpeedX = 0.001 + Math.sin(time * 0.3) * 0.0005;
-            const textureSpeedY = Math.cos(time * 0.25) * 0.0003;
+            // Constant texture animation movement
+            const textureSpeedX = 0.003; // Constant horizontal speed
+            const textureSpeedY = 0.001; // Constant vertical speed
             donut.texture.offset.x += textureSpeedX;
             donut.texture.offset.y += textureSpeedY;
 
-            // Dynamic lighting with complex orbital movement
+            // Constant speed lighting with steady orbital movement
             const lightRadius = 25;
-            const lightAngle1 = time * 0.4;
-            const lightAngle2 = time * 0.6;
-            directionalLight.position.x = Math.cos(lightAngle1) * lightRadius + Math.sin(lightAngle2) * 8;
-            directionalLight.position.y = 15 + Math.sin(lightAngle1 * 1.3) * 10;
-            directionalLight.position.z = Math.sin(lightAngle1) * lightRadius + Math.cos(lightAngle2) * 8;
+            const lightAngle1 = time * 1.2; // Constant rotation speed
+            const lightAngle2 = time * 1.8; // Constant rotation speed (different rate for complexity)
+            directionalLight.position.x = Math.cos(lightAngle1) * lightRadius + Math.cos(lightAngle2) * 8;
+            directionalLight.position.y = 15 + Math.sin(lightAngle1) * 10;
+            directionalLight.position.z = Math.sin(lightAngle1) * lightRadius + Math.sin(lightAngle2) * 8;
             
-            // Subtle ambient light pulsing for atmosphere
-            ambientLight.intensity = 1.1 + Math.sin(time * 0.5) * 0.2;
+            // Constant ambient light intensity
+            ambientLight.intensity = 1.1;
 
             renderer.render(scene, camera);
         }
