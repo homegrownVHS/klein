@@ -47,8 +47,8 @@
             
             // Dynamic pattern material (higher resolution for smoother appearance)
             const canvas = document.createElement('canvas');
-            canvas.width = 1024;
-            canvas.height = 1024;
+            canvas.width = 1000;  // Evenly divisible by 40 (25 squares per row)
+            canvas.height = 1000; // Evenly divisible by 40 (25 squares per column)
             const ctx = canvas.getContext('2d');
             
             // Function to interpolate between colors smoothly
@@ -70,7 +70,7 @@
             
             // Function to update the pattern with moving circles
             function updatePattern(time) {
-                const patternSize = 32; // Double the pattern size for higher resolution canvas
+                const patternSize = 50; // Even larger squares for better metallic detail visibility
                 
                 // Torus parameters for 3D mapping (must match geometry)
                 const majorRadius = 20;
@@ -84,143 +84,83 @@
                         const screenV = y / canvas.height; // 0-1 around the tube
                         
                         // Determine which zone/screen this pixel belongs to
-                        const zoneCount = 6;
+                        const zoneCount = 24; // Many more color bands
                         const zone = Math.floor(screenU * zoneCount);
                         
-                        // Default background
-                        let hue = 240;
-                        let saturation = 30;
-                        let lightness = 10;
+                        // Fresh, unique color palette - no rainbow, just beautiful combinations
+                        const palette = [
+                            [0.9, 0.1, 0.3],    // Deep crimson
+                            [1.0, 0.4, 0.2],    // Coral
+                            [1.0, 0.6, 0.8],    // Soft pink
+                            [0.8, 0.3, 0.8],    // Lavender
+                            [0.4, 0.2, 0.9],    // Deep purple
+                            [0.2, 0.4, 0.8],    // Steel blue
+                            [0.1, 0.6, 0.9],    // Sky blue
+                            [0.3, 0.8, 0.8],    // Turquoise
+                            [0.2, 0.7, 0.4],    // Emerald
+                            [0.5, 0.8, 0.2],    // Lime
+                            [0.8, 0.9, 0.3],    // Chartreuse
+                            [1.0, 0.8, 0.2],    // Golden yellow
+                            [1.0, 0.6, 0.1],    // Amber
+                            [0.9, 0.4, 0.1],    // Burnt orange
+                            [0.7, 0.2, 0.1],    // Rust
+                            [0.5, 0.1, 0.2],    // Burgundy
+                            [0.3, 0.1, 0.4],    // Eggplant
+                            [0.2, 0.2, 0.6],    // Navy
+                            [0.1, 0.3, 0.5],    // Midnight blue
+                            [0.2, 0.5, 0.6],    // Teal
+                            [0.4, 0.6, 0.5],    // Sage
+                            [0.6, 0.7, 0.4],    // Olive
+                            [0.8, 0.7, 0.3],    // Brass
+                            [0.9, 0.5, 0.2],    // Copper
+                            [0.8, 0.2, 0.4],    // Rose
+                            [0.6, 0.1, 0.5],    // Plum
+                            [0.4, 0.0, 0.6],    // Violet
+                            [0.2, 0.1, 0.7],    // Indigo
+                            [0.1, 0.2, 0.8],    // Royal blue
+                            [0.0, 0.4, 0.7],    // Ocean blue
+                            [0.9, 0.1, 0.3]     // Back to crimson
+                        ];
                         
-                        // Different graphics for each zone
-                        if (zone === 0) {
-                            // Zone 0: Classic arcade - Pac-Man style
-                            const dotGrid = 8;
-                            const dotSpaceU = 1 / dotGrid;
-                            const dotSpaceV = 1 / dotGrid;
-                            const localU = (screenU * zoneCount) % 1;
+                        // Calculate color cycling through palette
+                        const cycleSpeed = time * 0.6; // Even slower for smoother transitions with more colors
+                        const zoneOffset = zone * (palette.length / 24); // Distribute 24 zones across palette
+                        const totalCyclePos = (cycleSpeed + zoneOffset) % palette.length;
+                        
+                        // Get two adjacent colors for interpolation
+                        const colorIndex = Math.floor(totalCyclePos);
+                        const nextColorIndex = (colorIndex + 1) % palette.length;
+                        const blend = totalCyclePos - colorIndex;
+                        
+                        // Interpolate between colors
+                        const color1 = palette[colorIndex];
+                        const color2 = palette[nextColorIndex];
+                        const paletteR = color1[0] * (1 - blend) + color2[0] * blend;
+                        const paletteG = color1[1] * (1 - blend) + color2[1] * blend;
+                        const paletteB = color1[2] * (1 - blend) + color2[2] * blend;
+                        
+                        // Convert to HSV for compatibility with existing code
+                        function rgbToHsv(r, g, b) {
+                            const max = Math.max(r, g, b);
+                            const min = Math.min(r, g, b);
+                            const diff = max - min;
                             
-                            for (let i = 0; i < dotGrid; i++) {
-                                for (let j = 0; j < dotGrid; j++) {
-                                    const dotU = i * dotSpaceU + 0.05;
-                                    const dotV = j * dotSpaceV + 0.05;
-                                    
-                                    let distU = Math.abs(localU - dotU);
-                                    let distV = Math.abs(screenV - dotV);
-                                    const distance = Math.sqrt(distU * distU + distV * distV);
-                                    
-                                    if (distance < 0.02) {
-                                        hue = 60; // Yellow dots
-                                        saturation = 100;
-                                        lightness = 70;
-                                    }
-                                }
+                            let hue = 0;
+                            if (diff !== 0) {
+                                if (max === r) hue = ((g - b) / diff) % 6;
+                                else if (max === g) hue = (b - r) / diff + 2;
+                                else hue = (r - g) / diff + 4;
                             }
+                            hue = Math.round(hue * 60);
+                            if (hue < 0) hue += 360;
                             
-                            // Moving ghost
-                            const ghostU = (time * 0.3) % 1;
-                            const ghostV = 0.5 + Math.sin(time * 2) * 0.3;
-                            let distU = Math.abs(localU - ghostU);
-                            let distV = Math.abs(screenV - ghostV);
-                            if (Math.sqrt(distU * distU + distV * distV) < 0.06) {
-                                hue = 300; // Purple ghost
-                                saturation = 80;
-                                lightness = 60;
-                            }
+                            const saturation = max === 0 ? 0 : (diff / max) * 100;
+                            const lightness = max * 100;
                             
-                        } else if (zone === 1) {
-                            // Zone 1: Matrix-style falling code
-                            const localU = (screenU * zoneCount) % 1;
-                            const columns = 12;
-                            const colWidth = 1 / columns;
-                            const col = Math.floor(localU / colWidth);
-                            
-                            const fallSpeed = time * 2 + col * 0.5;
-                            const charV = (fallSpeed + Math.sin(col * 2) * 0.5) % 1.2;
-                            
-                            if (Math.abs(screenV - charV) < 0.05 && charV < 1) {
-                                hue = 120; // Green matrix
-                                saturation = 100;
-                                lightness = 70 - Math.abs(screenV - charV) * 400;
-                            }
-                            
-                        } else if (zone === 2) {
-                            // Zone 2: Plasma/lava lamp effect
-                            const localU = (screenU * zoneCount) % 1;
-                            const blob1 = Math.sin(localU * 8 + time * 1.5) * Math.cos(screenV * 6 + time * 1.2);
-                            const blob2 = Math.cos(localU * 5 + time * 0.8) * Math.sin(screenV * 9 + time * 2);
-                            const plasma = (blob1 + blob2) * 0.5;
-                            
-                            if (plasma > 0.2) {
-                                hue = (plasma * 180 + time * 60) % 360;
-                                saturation = 80 + plasma * 20;
-                                lightness = 30 + plasma * 40;
-                            }
-                            
-                        } else if (zone === 3) {
-                            // Zone 3: Geometric patterns - triangles and hexagons
-                            const localU = (screenU * zoneCount) % 1;
-                            const scale = 8;
-                            const triU = (localU * scale + time * 0.5) % 1;
-                            const triV = (screenV * scale + time * 0.3) % 1;
-                            
-                            // Triangle pattern
-                            if ((triU + triV) % 0.5 < 0.1 || Math.abs(triU - triV) % 0.5 < 0.1) {
-                                hue = (triU * 180 + triV * 180 + time * 40) % 360;
-                                saturation = 85;
-                                lightness = 50;
-                            }
-                            
-                        } else if (zone === 4) {
-                            // Zone 4: Retro waveform/oscilloscope
-                            const localU = (screenU * zoneCount) % 1;
-                            const waveform = 0.5 + 0.3 * Math.sin(localU * 20 + time * 3) * Math.cos(localU * 8 + time);
-                            const lineThickness = 0.03;
-                            
-                            if (Math.abs(screenV - waveform) < lineThickness) {
-                                const intensity = 1 - Math.abs(screenV - waveform) / lineThickness;
-                                hue = 180; // Cyan scope line
-                                saturation = 100;
-                                lightness = 40 + intensity * 40;
-                            }
-                            
-                            // Grid background
-                            if (Math.abs((localU * 10) % 1 - 0.5) < 0.02 || Math.abs((screenV * 10) % 1 - 0.5) < 0.02) {
-                                hue = 180;
-                                saturation = 60;
-                                lightness = 15;
-                            }
-                            
-                        } else if (zone === 5) {
-                            // Zone 5: Space invaders style
-                            const localU = (screenU * zoneCount) % 1;
-                            const invaderRows = 4;
-                            const invaderCols = 6;
-                            
-                            for (let row = 0; row < invaderRows; row++) {
-                                for (let col = 0; col < invaderCols; col++) {
-                                    const invU = (col / invaderCols) + 0.08;
-                                    const invV = (row / invaderRows) + 0.1 + Math.sin(time * 0.5 + col) * 0.02;
-                                    
-                                    let distU = Math.abs(localU - invU);
-                                    let distV = Math.abs(screenV - invV);
-                                    
-                                    if (distU < 0.04 && distV < 0.05) {
-                                        hue = (row * 60 + time * 20) % 360;
-                                        saturation = 90;
-                                        lightness = 60;
-                                    }
-                                }
-                            }
-                            
-                            // Player ship at bottom
-                            const playerU = 0.5 + Math.sin(time * 1.5) * 0.3;
-                            if (Math.abs(localU - playerU) < 0.05 && Math.abs(screenV - 0.9) < 0.03) {
-                                hue = 120; // Green player ship
-                                saturation = 100;
-                                lightness = 70;
-                            }
+                            return [hue, saturation, lightness];
                         }
+                        
+                        const [hue, saturation, lightness] = rgbToHsv(paletteR, paletteG, paletteB);
                         
                         // Convert HSV to RGB
                         function hsvToRgb(h, s, v) {
@@ -255,9 +195,46 @@
                         const circleG = Math.floor(255 * cg * brightness);
                         const circleB = Math.floor(255 * cb * brightness);
                         
-                        // Draw square
-                        ctx.fillStyle = `rgb(${squareR}, ${squareG}, ${squareB})`;
+                        // Draw square with enhanced metallic gradient
+                        const gradient = ctx.createLinearGradient(x, y, x + patternSize, y + patternSize);
+                        
+                        // Create ultra-metallic shine effect with extreme contrast
+                        const baseColor = `rgb(${squareR}, ${squareG}, ${squareB})`;
+                        const ultraBrightColor = `rgb(${Math.min(255, squareR + 150)}, ${Math.min(255, squareG + 150)}, ${Math.min(255, squareB + 150)})`;
+                        const brightColor = `rgb(${Math.min(255, squareR + 80)}, ${Math.min(255, squareG + 80)}, ${Math.min(255, squareB + 80)})`;
+                        const darkColor = `rgb(${Math.max(0, squareR - 100)}, ${Math.max(0, squareG - 100)}, ${Math.max(0, squareB - 100)})`;
+                        const ultraDarkColor = `rgb(${Math.max(0, squareR - 140)}, ${Math.max(0, squareG - 140)}, ${Math.max(0, squareB - 140)})`;
+                        
+                        gradient.addColorStop(0, ultraBrightColor); // Ultra bright metallic highlight
+                        gradient.addColorStop(0.1, brightColor);   // Bright transition
+                        gradient.addColorStop(0.3, baseColor);     // Base color
+                        gradient.addColorStop(0.7, baseColor);     // Base color
+                        gradient.addColorStop(0.9, darkColor);     // Dark transition
+                        gradient.addColorStop(1, ultraDarkColor);  // Ultra deep shadow
+                        
+                        ctx.fillStyle = gradient;
                         ctx.fillRect(x, y, patternSize, patternSize);
+                        
+                        // Add secondary metallic highlight streak
+                        const highlight = ctx.createLinearGradient(x, y, x + patternSize * 0.4, y + patternSize * 0.4);
+                        const highlightColor = `rgba(255, 255, 255, 0.3)`; // Semi-transparent white shine
+                        const transparentColor = `rgba(255, 255, 255, 0)`;
+                        
+                        highlight.addColorStop(0, highlightColor);
+                        highlight.addColorStop(1, transparentColor);
+                        
+                        ctx.fillStyle = highlight;
+                        ctx.fillRect(x, y, patternSize * 0.6, patternSize * 0.6);
+                        
+                        // Metallic edge highlights
+                        ctx.strokeStyle = `rgba(255, 255, 255, 0.4)`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + patternSize * 0.3, y);
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x, y + patternSize * 0.3);
+                        ctx.stroke();
                         
                         // Square border
                         ctx.strokeStyle = '#000000';
