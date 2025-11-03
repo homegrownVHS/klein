@@ -78,30 +78,92 @@
                 
                 for (let x = 0; x < canvas.width; x += patternSize) {
                     for (let y = 0; y < canvas.height; y += patternSize) {
-                        // Map canvas coordinates to torus surface coordinates
-                        const u = (x / canvas.width) * Math.PI * 2 * 16; // Around the torus (poloidal)
-                        const v = (y / canvas.height) * Math.PI * 2 * 8;  // Around the tube (toroidal)
+                        // Toroidal LCD Screen - Map canvas directly to torus surface (1:1 mapping)
+                        // Canvas coordinates directly represent torus surface coordinates
+                        const screenU = x / canvas.width;  // 0-1 around the torus
+                        const screenV = y / canvas.height; // 0-1 around the tube
                         
-                        // Calculate 3D position on torus surface
-                        const torusX = (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u);
-                        const torusY = (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u);
-                        const torusZ = minorRadius * Math.sin(v);
+                        // Dynamic background with flowing energy
+                        let hue = (screenU * 360 + time * 30) % 360; // Rainbow background that flows
+                        let saturation = 20 + Math.sin(screenV * 10 + time * 2) * 15;
+                        let lightness = 8 + Math.sin(screenU * 8 + time) * 5;
                         
-                        // Color based on 3D torus geometry with more variety
-                        const radialDistance = Math.sqrt(torusX * torusX + torusY * torusY);
+                        // Pulsing energy rings that expand across the torus
+                        for (let ring = 0; ring < 5; ring++) {
+                            const ringTime = time * 0.8 + ring * 1.2;
+                            const ringRadius = (ringTime * 0.3) % 1.5; // Expanding rings
+                            const ringCenterU = 0.5 + Math.sin(ringTime * 0.4) * 0.3;
+                            const ringCenterV = 0.5 + Math.cos(ringTime * 0.3) * 0.2;
+                            
+                            let distU = Math.abs(screenU - ringCenterU);
+                            let distV = Math.abs(screenV - ringCenterV);
+                            if (distU > 0.5) distU = 1.0 - distU;
+                            if (distV > 0.5) distV = 1.0 - distV;
+                            const distance = Math.sqrt(distU * distU + distV * distV);
+                            
+                            // Ring effect
+                            const ringThickness = 0.03;
+                            if (Math.abs(distance - ringRadius) < ringThickness) {
+                                const intensity = 1.0 - Math.abs(distance - ringRadius) / ringThickness;
+                                hue = (ring * 60 + time * 50) % 360;
+                                saturation = 80;
+                                lightness = 30 + intensity * 50;
+                            }
+                        }
                         
-                        // Smooth, continuous color flow patterns
-                        const ringWave = Math.sin((radialDistance - 14) * 0.4 + time * 1.0); // Gentler radial waves
-                        const spiralFlow = u * 0.2 + time * 0.8; // More dominant spiral flow
-                        const longitudinalWave = Math.sin(v * 1.5 + time * 0.6); // Smoother tube waves
+                        // Flowing plasma waves
+                        const plasmaWave1 = Math.sin(screenU * 15 + time * 3) * Math.cos(screenV * 10 + time * 2);
+                        const plasmaWave2 = Math.cos(screenU * 8 + time * 2) * Math.sin(screenV * 12 + time * 4);
+                        const plasma = (plasmaWave1 + plasmaWave2) * 0.5;
                         
-                        // Create flowing rainbow effect that never gets too light
-                        const combinedPhase = spiralFlow * 3 + ringWave + longitudinalWave * 0.5;
-                        const hue = (combinedPhase * 45 + time * 30) % 360; // Continuous rainbow cycling
+                        if (plasma > 0.3) {
+                            hue = (plasma * 200 + time * 100) % 360;
+                            saturation = 70 + plasma * 30;
+                            lightness = 25 + plasma * 40;
+                        }
                         
-                        // Keep colors rich and saturated without washing out
-                        const saturation = 90 + Math.sin(spiralFlow * 0.8) * 10; // High saturation, less variation
-                        const lightness = 50 + Math.cos(ringWave + longitudinalWave) * 8; // Medium lightness to avoid white
+                        // Dancing geometric shapes
+                        const shapeCount = 8;
+                        for (let i = 0; i < shapeCount; i++) {
+                            const shapeTime = time * (0.5 + i * 0.1);
+                            const shapeU = (0.5 + Math.sin(shapeTime + i) * 0.4) % 1;
+                            const shapeV = (0.5 + Math.cos(shapeTime * 0.7 + i * 0.5) * 0.3) % 1;
+                            const shapeSize = 0.04 + Math.sin(shapeTime * 2) * 0.02;
+                            
+                            let distU = Math.abs(screenU - shapeU);
+                            let distV = Math.abs(screenV - shapeV);
+                            if (distU > 0.5) distU = 1.0 - distU;
+                            if (distV > 0.5) distV = 1.0 - distV;
+                            
+                            // Diamond shape
+                            if ((Math.abs(distU) + Math.abs(distV)) < shapeSize) {
+                                hue = (i * 45 + time * 80) % 360;
+                                saturation = 90;
+                                lightness = 60 + Math.sin(shapeTime * 3) * 20;
+                            }
+                        }
+                        
+                        // Spiraling energy streams
+                        const spiralArms = 3;
+                        for (let arm = 0; arm < spiralArms; arm++) {
+                            const armAngle = (arm / spiralArms) * Math.PI * 2 + time * 0.5;
+                            const spiralRadius = (screenU + screenV + time * 0.3) % 1;
+                            
+                            const spiralU = 0.5 + Math.cos(armAngle + spiralRadius * 8) * spiralRadius * 0.4;
+                            const spiralV = 0.5 + Math.sin(armAngle + spiralRadius * 8) * spiralRadius * 0.4;
+                            
+                            let distU = Math.abs(screenU - spiralU);
+                            let distV = Math.abs(screenV - spiralV);
+                            if (distU > 0.5) distU = 1.0 - distU;
+                            if (distV > 0.5) distV = 1.0 - distV;
+                            const distance = Math.sqrt(distU * distU + distV * distV);
+                            
+                            if (distance < 0.015) {
+                                hue = (arm * 120 + spiralRadius * 360 + time * 60) % 360;
+                                saturation = 85;
+                                lightness = 50 + (1 - distance / 0.015) * 30;
+                            }
+                        }
                         
                         // Convert HSV to RGB
                         function hsvToRgb(h, s, v) {
@@ -122,7 +184,7 @@
                         }
                         
                         const [r, g, b] = hsvToRgb(hue, saturation / 100, lightness / 100);
-                        const brightness = 1.0 + 0.15 * Math.sin(time * 0.5 + combinedPhase * 0.3); // Brighter with more variation
+                        const brightness = 1.0; // Consistent brightness for LCD screen effect
                         
                         // Square colors
                         const squareR = Math.floor(255 * r * brightness);
