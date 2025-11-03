@@ -83,85 +83,142 @@
                         const screenU = x / canvas.width;  // 0-1 around the torus
                         const screenV = y / canvas.height; // 0-1 around the tube
                         
-                        // Dynamic background with flowing energy
-                        let hue = (screenU * 360 + time * 30) % 360; // Rainbow background that flows
-                        let saturation = 20 + Math.sin(screenV * 10 + time * 2) * 15;
-                        let lightness = 8 + Math.sin(screenU * 8 + time) * 5;
+                        // Determine which zone/screen this pixel belongs to
+                        const zoneCount = 6;
+                        const zone = Math.floor(screenU * zoneCount);
                         
-                        // Pulsing energy rings that expand across the torus
-                        for (let ring = 0; ring < 5; ring++) {
-                            const ringTime = time * 0.8 + ring * 1.2;
-                            const ringRadius = (ringTime * 0.3) % 1.5; // Expanding rings
-                            const ringCenterU = 0.5 + Math.sin(ringTime * 0.4) * 0.3;
-                            const ringCenterV = 0.5 + Math.cos(ringTime * 0.3) * 0.2;
+                        // Default background
+                        let hue = 240;
+                        let saturation = 30;
+                        let lightness = 10;
+                        
+                        // Different graphics for each zone
+                        if (zone === 0) {
+                            // Zone 0: Classic arcade - Pac-Man style
+                            const dotGrid = 8;
+                            const dotSpaceU = 1 / dotGrid;
+                            const dotSpaceV = 1 / dotGrid;
+                            const localU = (screenU * zoneCount) % 1;
                             
-                            let distU = Math.abs(screenU - ringCenterU);
-                            let distV = Math.abs(screenV - ringCenterV);
-                            if (distU > 0.5) distU = 1.0 - distU;
-                            if (distV > 0.5) distV = 1.0 - distV;
-                            const distance = Math.sqrt(distU * distU + distV * distV);
+                            for (let i = 0; i < dotGrid; i++) {
+                                for (let j = 0; j < dotGrid; j++) {
+                                    const dotU = i * dotSpaceU + 0.05;
+                                    const dotV = j * dotSpaceV + 0.05;
+                                    
+                                    let distU = Math.abs(localU - dotU);
+                                    let distV = Math.abs(screenV - dotV);
+                                    const distance = Math.sqrt(distU * distU + distV * distV);
+                                    
+                                    if (distance < 0.02) {
+                                        hue = 60; // Yellow dots
+                                        saturation = 100;
+                                        lightness = 70;
+                                    }
+                                }
+                            }
                             
-                            // Ring effect
-                            const ringThickness = 0.03;
-                            if (Math.abs(distance - ringRadius) < ringThickness) {
-                                const intensity = 1.0 - Math.abs(distance - ringRadius) / ringThickness;
-                                hue = (ring * 60 + time * 50) % 360;
+                            // Moving ghost
+                            const ghostU = (time * 0.3) % 1;
+                            const ghostV = 0.5 + Math.sin(time * 2) * 0.3;
+                            let distU = Math.abs(localU - ghostU);
+                            let distV = Math.abs(screenV - ghostV);
+                            if (Math.sqrt(distU * distU + distV * distV) < 0.06) {
+                                hue = 300; // Purple ghost
                                 saturation = 80;
-                                lightness = 30 + intensity * 50;
+                                lightness = 60;
                             }
-                        }
-                        
-                        // Flowing plasma waves
-                        const plasmaWave1 = Math.sin(screenU * 15 + time * 3) * Math.cos(screenV * 10 + time * 2);
-                        const plasmaWave2 = Math.cos(screenU * 8 + time * 2) * Math.sin(screenV * 12 + time * 4);
-                        const plasma = (plasmaWave1 + plasmaWave2) * 0.5;
-                        
-                        if (plasma > 0.3) {
-                            hue = (plasma * 200 + time * 100) % 360;
-                            saturation = 70 + plasma * 30;
-                            lightness = 25 + plasma * 40;
-                        }
-                        
-                        // Dancing geometric shapes
-                        const shapeCount = 8;
-                        for (let i = 0; i < shapeCount; i++) {
-                            const shapeTime = time * (0.5 + i * 0.1);
-                            const shapeU = (0.5 + Math.sin(shapeTime + i) * 0.4) % 1;
-                            const shapeV = (0.5 + Math.cos(shapeTime * 0.7 + i * 0.5) * 0.3) % 1;
-                            const shapeSize = 0.04 + Math.sin(shapeTime * 2) * 0.02;
                             
-                            let distU = Math.abs(screenU - shapeU);
-                            let distV = Math.abs(screenV - shapeV);
-                            if (distU > 0.5) distU = 1.0 - distU;
-                            if (distV > 0.5) distV = 1.0 - distV;
+                        } else if (zone === 1) {
+                            // Zone 1: Matrix-style falling code
+                            const localU = (screenU * zoneCount) % 1;
+                            const columns = 12;
+                            const colWidth = 1 / columns;
+                            const col = Math.floor(localU / colWidth);
                             
-                            // Diamond shape
-                            if ((Math.abs(distU) + Math.abs(distV)) < shapeSize) {
-                                hue = (i * 45 + time * 80) % 360;
-                                saturation = 90;
-                                lightness = 60 + Math.sin(shapeTime * 3) * 20;
+                            const fallSpeed = time * 2 + col * 0.5;
+                            const charV = (fallSpeed + Math.sin(col * 2) * 0.5) % 1.2;
+                            
+                            if (Math.abs(screenV - charV) < 0.05 && charV < 1) {
+                                hue = 120; // Green matrix
+                                saturation = 100;
+                                lightness = 70 - Math.abs(screenV - charV) * 400;
                             }
-                        }
-                        
-                        // Spiraling energy streams
-                        const spiralArms = 3;
-                        for (let arm = 0; arm < spiralArms; arm++) {
-                            const armAngle = (arm / spiralArms) * Math.PI * 2 + time * 0.5;
-                            const spiralRadius = (screenU + screenV + time * 0.3) % 1;
                             
-                            const spiralU = 0.5 + Math.cos(armAngle + spiralRadius * 8) * spiralRadius * 0.4;
-                            const spiralV = 0.5 + Math.sin(armAngle + spiralRadius * 8) * spiralRadius * 0.4;
+                        } else if (zone === 2) {
+                            // Zone 2: Plasma/lava lamp effect
+                            const localU = (screenU * zoneCount) % 1;
+                            const blob1 = Math.sin(localU * 8 + time * 1.5) * Math.cos(screenV * 6 + time * 1.2);
+                            const blob2 = Math.cos(localU * 5 + time * 0.8) * Math.sin(screenV * 9 + time * 2);
+                            const plasma = (blob1 + blob2) * 0.5;
                             
-                            let distU = Math.abs(screenU - spiralU);
-                            let distV = Math.abs(screenV - spiralV);
-                            if (distU > 0.5) distU = 1.0 - distU;
-                            if (distV > 0.5) distV = 1.0 - distV;
-                            const distance = Math.sqrt(distU * distU + distV * distV);
+                            if (plasma > 0.2) {
+                                hue = (plasma * 180 + time * 60) % 360;
+                                saturation = 80 + plasma * 20;
+                                lightness = 30 + plasma * 40;
+                            }
                             
-                            if (distance < 0.015) {
-                                hue = (arm * 120 + spiralRadius * 360 + time * 60) % 360;
+                        } else if (zone === 3) {
+                            // Zone 3: Geometric patterns - triangles and hexagons
+                            const localU = (screenU * zoneCount) % 1;
+                            const scale = 8;
+                            const triU = (localU * scale + time * 0.5) % 1;
+                            const triV = (screenV * scale + time * 0.3) % 1;
+                            
+                            // Triangle pattern
+                            if ((triU + triV) % 0.5 < 0.1 || Math.abs(triU - triV) % 0.5 < 0.1) {
+                                hue = (triU * 180 + triV * 180 + time * 40) % 360;
                                 saturation = 85;
-                                lightness = 50 + (1 - distance / 0.015) * 30;
+                                lightness = 50;
+                            }
+                            
+                        } else if (zone === 4) {
+                            // Zone 4: Retro waveform/oscilloscope
+                            const localU = (screenU * zoneCount) % 1;
+                            const waveform = 0.5 + 0.3 * Math.sin(localU * 20 + time * 3) * Math.cos(localU * 8 + time);
+                            const lineThickness = 0.03;
+                            
+                            if (Math.abs(screenV - waveform) < lineThickness) {
+                                const intensity = 1 - Math.abs(screenV - waveform) / lineThickness;
+                                hue = 180; // Cyan scope line
+                                saturation = 100;
+                                lightness = 40 + intensity * 40;
+                            }
+                            
+                            // Grid background
+                            if (Math.abs((localU * 10) % 1 - 0.5) < 0.02 || Math.abs((screenV * 10) % 1 - 0.5) < 0.02) {
+                                hue = 180;
+                                saturation = 60;
+                                lightness = 15;
+                            }
+                            
+                        } else if (zone === 5) {
+                            // Zone 5: Space invaders style
+                            const localU = (screenU * zoneCount) % 1;
+                            const invaderRows = 4;
+                            const invaderCols = 6;
+                            
+                            for (let row = 0; row < invaderRows; row++) {
+                                for (let col = 0; col < invaderCols; col++) {
+                                    const invU = (col / invaderCols) + 0.08;
+                                    const invV = (row / invaderRows) + 0.1 + Math.sin(time * 0.5 + col) * 0.02;
+                                    
+                                    let distU = Math.abs(localU - invU);
+                                    let distV = Math.abs(screenV - invV);
+                                    
+                                    if (distU < 0.04 && distV < 0.05) {
+                                        hue = (row * 60 + time * 20) % 360;
+                                        saturation = 90;
+                                        lightness = 60;
+                                    }
+                                }
+                            }
+                            
+                            // Player ship at bottom
+                            const playerU = 0.5 + Math.sin(time * 1.5) * 0.3;
+                            if (Math.abs(localU - playerU) < 0.05 && Math.abs(screenV - 0.9) < 0.03) {
+                                hue = 120; // Green player ship
+                                saturation = 100;
+                                lightness = 70;
                             }
                         }
                         
