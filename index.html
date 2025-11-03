@@ -83,15 +83,18 @@
                         const screenU = x / canvas.width;  // 0-1 around the torus
                         const screenV = y / canvas.height; // 0-1 around the tube
                         
-                        // Use UV coordinates for seamless checkerboard (these are inherently seamless)
-                        const checkerSize = 4; // Size of checkerboard squares in button units
-                        const checkerU = Math.floor((screenU * 16) / checkerSize); // Divide 16x16 grid by checker size
-                        const checkerV = Math.floor((screenV * 16) / checkerSize); // Divide 16x16 grid by checker size
+                        // Consistent colored checkerboard - each button gets solid color based on its grid position
+                        const buttonU = Math.floor(x / patternSize); // Which button column (0-15)
+                        const buttonV = Math.floor(y / patternSize); // Which button row (0-15)
                         
-                        // Create alternating checkerboard pattern
+                        // Create checkerboard pattern where each button is solid colored
+                        const checkerU = Math.floor(buttonU / 2); // 2x2 button groups horizontally
+                        const checkerV = Math.floor(buttonV / 2); // 2x2 button groups vertically
+                        
+                        // Each 2x2 group of buttons shares the same base color
                         const isChecker = (checkerU + checkerV) % 2;
-                        const baseZone = Math.floor(screenU * 12); // 12 base color zones
-                        const zone = baseZone + (isChecker * 12); // Offset every other checker square
+                        const baseZone = (checkerU + checkerV) % 12; // 12 different base colors
+                        const zone = baseZone + (isChecker * 12); // Offset alternating squares
                         
                         // Fresh, unique color palette - no rainbow, just beautiful combinations
                         const palette = [
