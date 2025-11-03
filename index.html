@@ -37,41 +37,28 @@
         renderer.setClearColor(0x000011, 1); // Darker background for better lighting contrast
         document.body.appendChild(renderer.domElement);
 
-        // Add atmospheric lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.3); // Soft ambient light
+        // Simple lighting to showcase internal donut depth
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Base lighting
         scene.add(ambientLight);
 
-        // Add directional light from above
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        directionalLight.position.set(0, 30, 0);
-        directionalLight.castShadow = true;
+        // Single directional light to create depth perception
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        directionalLight.position.set(20, 15, 10);
+        directionalLight.target.position.set(0, 0, 0);
         scene.add(directionalLight);
-
-        // Add colored point lights for atmosphere
-        const pointLight1 = new THREE.PointLight(0xff6600, 0.8, 50);
-        pointLight1.position.set(15, 10, 15);
-        scene.add(pointLight1);
-
-        const pointLight2 = new THREE.PointLight(0x0066ff, 0.8, 50);
-        pointLight2.position.set(-15, 10, -15);
-        scene.add(pointLight2);
-
-        const pointLight3 = new THREE.PointLight(0x00ff66, 0.6, 40);
-        pointLight3.position.set(0, -10, 20);
-        scene.add(pointLight3);
 
         // Create simple donut with animated color-cycling pattern
         function createDonutTunnel() {
             const majorRadius = 20;
             const minorRadius = 6;
             
-            // Donut geometry - viewed from inside
-            const torusGeometry = new THREE.TorusGeometry(majorRadius, minorRadius, 16, 32);
+            // Donut geometry - viewed from inside (higher resolution to reduce seams)
+            const torusGeometry = new THREE.TorusGeometry(majorRadius, minorRadius, 64, 128);
             
-            // Dynamic pattern material
+            // Dynamic pattern material (higher resolution for smoother appearance)
             const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
+            canvas.width = 1024;
+            canvas.height = 1024;
             const ctx = canvas.getContext('2d');
             
             // Function to interpolate between colors smoothly
@@ -93,14 +80,38 @@
             
             // Function to update the pattern with moving circles
             function updatePattern(time) {
-                const patternSize = 16;
+                const patternSize = 32; // Double the pattern size for higher resolution canvas
+                
+                // Torus parameters for 3D mapping (must match geometry)
+                const majorRadius = 20;
+                const minorRadius = 6;
                 
                 for (let x = 0; x < canvas.width; x += patternSize) {
                     for (let y = 0; y < canvas.height; y += patternSize) {
-                        // Simple color cycling based on position and time
-                        const squareIndexUnique = (x / patternSize) + (y / patternSize) * (canvas.width / patternSize);
-                        const colorPhase = (squareIndexUnique * 0.1 + time * 0.5) % (Math.PI * 2);
-                        const hue = (Math.sin(colorPhase) + 1) * 180; // 0-360 degrees
+                        // Map canvas coordinates to torus surface coordinates
+                        const u = (x / canvas.width) * Math.PI * 2 * 16; // Around the torus (poloidal)
+                        const v = (y / canvas.height) * Math.PI * 2 * 8;  // Around the tube (toroidal)
+                        
+                        // Calculate 3D position on torus surface
+                        const torusX = (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u);
+                        const torusY = (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u);
+                        const torusZ = minorRadius * Math.sin(v);
+                        
+                        // Color based on 3D torus geometry with more variety
+                        const radialDistance = Math.sqrt(torusX * torusX + torusY * torusY);
+                        
+                        // Organized color movement patterns
+                        const ringWave = Math.sin((radialDistance - 14) * 0.5 + time * 1.2); // Smooth radial waves
+                        const spiralFlow = u * 0.3 + time * 0.6; // Steady spiral rotation
+                        const longitudinalWave = Math.sin(v * 2 + time * 0.8); // Waves around the tube
+                        
+                        // Combine for smooth, predictable color flow
+                        const combinedPhase = ringWave * 2 + spiralFlow + longitudinalWave;
+                        const hue = (combinedPhase * 60 + 200) % 360; // Smoother color cycling
+                        
+                        // Smooth variations in saturation and brightness
+                        const saturation = 70 + Math.sin(spiralFlow * 0.8) * 15; // Gentle saturation waves
+                        const lightness = 55 + Math.cos(ringWave + longitudinalWave) * 10; // Coordinated brightness
                         
                         // Convert HSV to RGB
                         function hsvToRgb(h, s, v) {
@@ -120,8 +131,8 @@
                             return [(r + m), (g + m), (b + m)];
                         }
                         
-                        const [r, g, b] = hsvToRgb(hue, 0.8, 1.0);
-                        const brightness = 0.9 + 0.1 * Math.sin(time * 0.5);
+                        const [r, g, b] = hsvToRgb(hue, saturation / 100, lightness / 100);
+                        const brightness = 0.9 + 0.1 * Math.sin(time * 0.5 + combinedPhase * 0.3);
                         
                         // Square colors
                         const squareR = Math.floor(255 * r * brightness);
@@ -144,18 +155,9 @@
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x, y, patternSize, patternSize);
                         
-                        // Animate circle position within each square
-                        const animationSpeed = 0.8;
-                        const radius = patternSize * 0.25; // How far the circle can move from center
-                        
-                        // Create circular motion with variation per square
-                        const angle = time * animationSpeed + squareIndexUnique * 0.3;
-                        const circleOffsetX = Math.cos(angle) * radius;
-                        const circleOffsetY = Math.sin(angle) * radius;
-                        
-                        // Calculate animated circle position
-                        const animatedCircleX = x + patternSize/2 + circleOffsetX;
-                        const animatedCircleY = y + patternSize/2 + circleOffsetY;
+                        // Keep circles centered in their squares (no animation)
+                        const animatedCircleX = x + patternSize/2;
+                        const animatedCircleY = y + patternSize/2;
                         
                         // Draw animated circle
                         ctx.fillStyle = `rgb(${circleR}, ${circleG}, ${circleB})`;
@@ -177,6 +179,11 @@
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(16, 8);
+            
+            // Improve texture filtering to reduce seams
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
             
             const material = new THREE.MeshPhongMaterial({
                 map: texture,
@@ -255,23 +262,10 @@
             // Animate pattern position
             donut.texture.offset.x += 0.001;
 
-            // Animate the colored lights for dynamic atmosphere
-            pointLight1.position.x = Math.cos(time * 0.5) * 20;
-            pointLight1.position.z = Math.sin(time * 0.5) * 20;
-            pointLight1.position.y = 5 + Math.sin(time * 0.7) * 10;
-            
-            pointLight2.position.x = Math.cos(time * 0.3 + Math.PI) * 25;
-            pointLight2.position.z = Math.sin(time * 0.3 + Math.PI) * 25;
-            pointLight2.position.y = -5 + Math.cos(time * 0.4) * 8;
-            
-            pointLight3.position.x = Math.sin(time * 0.8) * 15;
-            pointLight3.position.z = Math.cos(time * 0.6) * 18;
-            pointLight3.position.y = Math.sin(time * 0.9) * 12;
-
-            // Pulse the light intensities
-            pointLight1.intensity = 0.6 + 0.4 * Math.sin(time * 1.2);
-            pointLight2.intensity = 0.5 + 0.3 * Math.cos(time * 0.8);
-            pointLight3.intensity = 0.4 + 0.2 * Math.sin(time * 1.5);
+            // Simple lighting animation to highlight the internal geometry depth
+            directionalLight.position.x = 20 + Math.cos(time * 0.4) * 5;
+            directionalLight.position.y = 15 + Math.sin(time * 0.3) * 3;
+            directionalLight.position.z = 10 + Math.sin(time * 0.5) * 4;
 
             renderer.render(scene, camera);
         }
